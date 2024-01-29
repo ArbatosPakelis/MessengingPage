@@ -1,0 +1,41 @@
+
+.centerDiv{
+    display: inline-flexbox !important;
+    margin-left: auto;
+    margin-right: auto;
+}
+
+div{
+    padding-top: 20px;
+}
+
+.centerText{
+    text-align: center !important;
+}
+
+body{
+    background-color: #181818 !important;
+    color: #dee4ea !important;
+}
+
+.navv{
+    color: #dee4ea !important;
+}
+
+.elementBack{
+    background-color: #282e33 !important;
+    border:none !important;
+    color: #dee4ea !important;
+}
+
+.inline{
+    display: inline-block;
+}
+
+.custom-file-input::file-selector-button {
+    color: #dee4ea; /* Text color */
+    background-color: #282e33; /* Background color */
+    border-radius: 5px; /* Border radius */
+    padding: 8px 12px; /* Padding */
+    cursor: pointer; /* Cursor style */
+}
