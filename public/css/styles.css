@@ -39,3 +39,7 @@ body{
     padding: 8px 12px; /* Padding */
     cursor: pointer; /* Cursor style */
 }
+
+a:hover{
+    color:white !important;
+}

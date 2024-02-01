@@ -1,9 +1,14 @@
 <?php
-
 namespace App\Controllers;
+use App\Models\LogModel;
 
 class Home extends BaseController
 {
+    private $logModel;
+    public function __construct()
+    {
+        $this->logModel = new LogModel();
+    }
     public function index(): string
     {
         return view('home');
@@ -21,6 +26,150 @@ class Home extends BaseController
 
     public function receiveMessage()
     {
-        return view('receive_message');
+        // Get the data parameter from the URL
+        $dataParam = $this->request->getGet('data');
+
+        // Decode the URL-encoded data parameter
+        $decodedData = urldecode($dataParam);
+
+        // Now, you might want to convert it to an array or do further processing
+        parse_str($decodedData, $data);
+        return view('receive_message', ['data' => $data]);
+    }
+
+    public function downloadFile()
+    {
+        // Get the data parameter from the URL
+        $dataParam = $this->request->getGet('path');
+        $file = FCPATH . 'files/'.$dataParam;
+
+            // Check if the file exists
+        if (file_exists($file)) {
+            return $this->response->download($file, null);
+        } else {
+            // Handle the case where the file doesn't exist (e.g., show an error message)
+            return 'File not found';
+        }
+    }
+
+    public function processTime($value){
+        // Get the current time
+        $currentTime = new \DateTime();
+
+        // Use a switch statement to handle different cases
+        switch ($value) {
+            case 1:
+                // Add 2 minutes
+                $currentTime->add(new \DateInterval('PT2M'));
+                break;
+            case 2:
+                // Add 15 minutes
+                $currentTime->add(new \DateInterval('PT15M'));
+                break;
+            case 3:
+                // Add 1 hour
+                $currentTime->add(new \DateInterval('PT1H'));
+                break;
+            case 4:
+                // Add 1 day
+                $currentTime->add(new \DateInterval('P1D'));
+                break;
+            default:
+                // Invalid value, do nothing or handle accordingly
+                break;
+    }
+
+    // Return the result as a formatted string (e.g., 'Y-m-d H:i:s')
+    return $currentTime->format('Y-m-d H:i:s');
+    }
+
+    public function submitMessage(){
+        if($this->request->getMethod() == 'post')
+        { 
+            $option = $this->request->getPost('expire');
+            $expiration = $this->processTime($option);
+            $dateTime = new \DateTime();
+            
+            $messageData = [
+                'Message' => $this->request->getPost('message'),
+                'Expire' => $expiration,
+                'CreatedAt' => $dateTime->format('Y-m-d H:i:s'),
+            ];
+            if ($this->logModel->save($messageData))
+            {
+                return $this->response->setJSON(['response' => 'success']);
+            }
+            else
+            {
+                return $this->response->setJSON(['error' => $this->logModel->errors()]);
+            }
+        }
+    }
+
+    public function upload_files(){
+        $uploadedFiles = $this->request->getFileMultiple('customFiles');
+        $uploadedFileNames = [];
+
+        // add files temporarely
+        foreach ($uploadedFiles as $file) {
+            if($file->getSize() > 0)
+            {
+                if ($file !== null && $file->isValid() && !$file->hasMoved()) {
+                    $name = $file->getRandomName();
+            
+                    // Move the uploaded file to the desired directory
+                    $file->move(getenv('baseURL') . ('files/'), $name);
+        
+                    $uploadedFileNames[] = $name;
+                } 
+                else 
+                {
+                    $errors = $file->getErrorString();
+                    return 'Error: ' . $errors;
+                }
+            }
+        }
+        
+        // make a zip file
+        $zip = new \ZipArchive();
+        $zipFileName = 'generated_' . uniqid() . '.zip';
+        if ($zip->open('files/'.$zipFileName, \ZipArchive::CREATE) === TRUE) {
+            foreach ($uploadedFileNames as $file) {
+                    $zip->addFile(getenv('baseURL') . ('files/'). $file, basename($file));
+            }
+            $zip->close();
+        }
+
+        // cleanup
+        foreach($uploadedFileNames as $file)
+        {
+            unlink(getenv('baseURL') . ('files/'). $file);
+        }
+        
+        return $zipFileName;
+    }
+
+    public function submitFiles(){
+        if($this->request->getMethod() == 'post')
+        { 
+            $option = $this->request->getPost('expire');
+            $expiration = $this->processTime($option);
+            $dateTime = new \DateTime();
+            $filename = $this->upload_files();
+            $messageData = [
+                'Message' => $this->request->getPost('message'),
+                'Expire' => $expiration,
+                'CreatedAt' => $dateTime->format('Y-m-d H:i:s'),
+                'File' => $filename,
+            ];
+            if ($this->logModel->save($messageData))
+            {
+                return $this->response->setJSON(['response' => 'success']);
+            }
+            else
+            {
+                return $this->response->setJSON(['error' => $this->logModel->errors()]);
+            }
+        }
     }
 }
