@@ -5,9 +5,12 @@ use App\Models\LogModel;
 class Home extends BaseController
 {
     private $logModel;
+    private $encrypter;
     public function __construct()
     {
         $this->logModel = new LogModel();
+        $this->encrypter = \Config\Services::encrypter();
+        date_default_timezone_set('Etc/GMT-2');
     }
     public function index(): string
     {
@@ -32,9 +35,12 @@ class Home extends BaseController
         // Decode the URL-encoded data parameter
         $decodedData = urldecode($dataParam);
 
-        // Now, you might want to convert it to an array or do further processing
-        parse_str($decodedData, $data);
-        return view('receive_message', ['data' => $data]);
+        $decryptedId = $this->encrypter->decrypt(hex2bin($decodedData));
+        $log = $this->logModel->where('id', $decryptedId)->find();
+        
+        $hold = $this->encrypter->decrypt(hex2bin($log[0]['Message']));
+        $log[0]['Message'] = $hold;
+        return view('receive_message', ['data' => $log]);
     }
 
     public function downloadFile()
@@ -91,19 +97,28 @@ class Home extends BaseController
             $dateTime = new \DateTime();
             
             $messageData = [
-                'Message' => $this->request->getPost('message'),
+                'Message' => bin2hex($this->encrypter->encrypt($this->request->getPost('message'))),
                 'Expire' => $expiration,
                 'CreatedAt' => $dateTime->format('Y-m-d H:i:s'),
             ];
+
             if ($this->logModel->save($messageData))
             {
-                return $this->response->setJSON(['response' => 'success']);
+                $insertedPrimaryKeyValue = $this->logModel->getInsertID();
+                $link = $this->makeURL($insertedPrimaryKeyValue);
+                return $this->response->setJSON(['link' => $link]);
             }
             else
             {
                 return $this->response->setJSON(['error' => $this->logModel->errors()]);
             }
         }
+    }
+
+    public function makeURL($id) :string
+    {
+        $data= bin2hex($this->encrypter->encrypt($id));
+        return 'receiveMessage?data=' . urlencode($data);
     }
 
     public function upload_files(){
@@ -152,12 +167,14 @@ class Home extends BaseController
     public function submitFiles(){
         if($this->request->getMethod() == 'post')
         { 
+            $encryption = \Config\Services::encryption();
+
             $option = $this->request->getPost('expire');
             $expiration = $this->processTime($option);
             $dateTime = new \DateTime();
             $filename = $this->upload_files();
             $messageData = [
-                'Message' => $this->request->getPost('message'),
+                'Message' => $encryption->encrypt($this->request->getPost('message')),
                 'Expire' => $expiration,
                 'CreatedAt' => $dateTime->format('Y-m-d H:i:s'),
                 'File' => $filename,

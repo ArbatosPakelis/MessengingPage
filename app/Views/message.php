@@ -42,7 +42,7 @@
                             </button>
                         </div>
                         <div class="col-sm-6" style="padding-right:0px">
-                            <input class="form-control elementBack" style="float:right" type="text" placeholder="Link will show here…" readonly>
+                            <input class="form-control elementBack" id="resp" style="float:right" type="text" placeholder="Link will show here…" readonly>
                         </div>
                     </div>
                 </form>
@@ -56,7 +56,8 @@
                                 type: 'post',
                                 data: formData,
                                 success: function (response) {
-                                    console.log(response);
+                                    console.log(response.link);
+                                    $('#resp').replaceWith('<input class="form-control elementBack" id="resp" style="float:right" type="text" value="<?php echo base_url() ?>public/'+ response.link +'" readonly>');
                                 },
                                 error: function (xhr, status, error) {
                                     // Ajax request encountered an error
