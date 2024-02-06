@@ -56,7 +56,6 @@
                                 type: 'post',
                                 data: formData,
                                 success: function (response) {
-                                    console.log(response.link);
                                     $('#resp').replaceWith('<input class="form-control elementBack" id="resp" style="float:right" type="text" value="<?php echo base_url() ?>public/'+ response.link +'" readonly>');
                                 },
                                 error: function (xhr, status, error) {

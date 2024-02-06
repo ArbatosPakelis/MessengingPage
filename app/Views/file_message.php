@@ -56,7 +56,7 @@
                             </button>
                         </div>
                         <div class="col-sm-6" style="padding-right:0px">
-                            <input class="form-control elementBack" style="float:right" type="text" placeholder="Link will show here…" readonly>
+                            <input class="form-control elementBack"  id="resp" style="float:right" type="text" placeholder="Link will show here…" readonly>
                         </div>
                     </div>
                 </form>
@@ -67,11 +67,23 @@
         $(document).ready(function () {
             $('#submitButton').click(function (e) {
                 e.preventDefault(); // Prevent the default form submission
+                // Create a FormData object from the form
                 var formData = new FormData($('#fileForm')[0]);
-                // Retrieve files from the file input
-                var filesInput = document.getElementById('customFiles');
-                allFiles.forEach(function (file) {
-                    formData.append('customFiles[]', file);
+
+                // Get the existing files from the FormData object
+                var existingFiles = formData.getAll('customFiles[]');
+
+                // Iterate through the files to be added
+                allFiles.forEach(function(file) {
+                    // Check if the file is already present in the FormData object
+                    var isDuplicate = existingFiles.some(function(existingFile) {
+                        return existingFile.name === file.name && existingFile.size === file.size;
+                    });
+
+                    // If the file is not a duplicate, append it to the FormData object
+                    if (!isDuplicate) {
+                        formData.append('customFiles[]', file);
+                    }
                 });
                 $.ajax({
                     url: '<?php echo base_url('public/submitF')?>',
@@ -79,6 +91,7 @@
                     data: formData,
                     success: function (response) {
                         console.log(response);
+                        $('#resp').replaceWith('<input class="form-control elementBack" id="resp" style="float:right" type="text" value="<?php echo base_url() ?>public/'+ response.link +'" readonly>');
                     },
                     error: function (xhr, status, error) {
                         // Ajax request encountered an error

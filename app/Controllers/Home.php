@@ -29,27 +29,41 @@ class Home extends BaseController
 
     public function receiveMessage()
     {
-        // Get the data parameter from the URL
-        $dataParam = $this->request->getGet('data');
+        try {
+            // Get the data parameter from the URL
+            $dataParam = $this->request->getGet('data');
 
-        // Decode the URL-encoded data parameter
-        $decodedData = urldecode($dataParam);
+            // Decode the URL-encoded data parameter
+            $decodedData = urldecode($dataParam);
 
-        $decryptedId = $this->encrypter->decrypt(hex2bin($decodedData));
-        $log = $this->logModel->where('id', $decryptedId)->find();
-        
-        $hold = $this->encrypter->decrypt(hex2bin($log[0]['Message']));
-        $log[0]['Message'] = $hold;
-        return view('receive_message', ['data' => $log]);
+            // Decrypt the ID
+            $decryptedId = $this->encrypter->decrypt(hex2bin($decodedData));
+
+            // Find the log with the decrypted ID
+            $log = $this->logModel->where('id', $decryptedId)->find();
+
+            if ($log) {
+                // Decrypt the message
+                $hold = $this->encrypter->decrypt(hex2bin($log[0]['Message']));
+                $log[0]['Message'] = $hold;
+                return view('receive_message', ['data' => $log]);
+            } else {
+                // Log with the decrypted ID not found
+                return view('receive_message', ['data' => null]);
+            }
+        } catch (\Exception $e) {
+            // Handle any exceptions or errors
+            return view('receive_message', ['data' => null]);
+        }
     }
 
     public function downloadFile()
     {
         // Get the data parameter from the URL
         $dataParam = $this->request->getGet('path');
-        $file = FCPATH . 'files/'.$dataParam;
+        $file = FCPATH . 'files/'. $this->encrypter->decrypt(hex2bin($dataParam));
 
-            // Check if the file exists
+        // Check if the file exists
         if (file_exists($file)) {
             return $this->response->download($file, null);
         } else {
@@ -122,29 +136,24 @@ class Home extends BaseController
     }
 
     public function upload_files(){
-        $uploadedFiles = $this->request->getFileMultiple('customFiles');
+        $uploadedFiles = $this->request->getFiles();
         $uploadedFileNames = [];
 
-        // add files temporarely
-        foreach ($uploadedFiles as $file) {
-            if($file->getSize() > 0)
-            {
-                if ($file !== null && $file->isValid() && !$file->hasMoved()) {
-                    $name = $file->getRandomName();
-            
-                    // Move the uploaded file to the desired directory
-                    $file->move(getenv('baseURL') . ('files/'), $name);
+        foreach ($uploadedFiles['customFiles'] as $file) {
+            if ($file !== null && $file->isValid() && !$file->hasMoved()) {
+                $name = $file->getRandomName();
         
-                    $uploadedFileNames[] = $name;
-                } 
-                else 
-                {
-                    $errors = $file->getErrorString();
-                    return 'Error: ' . $errors;
-                }
+                // Move the uploaded file to the desired directory
+                $file->move(getenv('baseURL') . ('files/'), $name);
+    
+                $uploadedFileNames[] = $name;
+            } 
+            else 
+            {
+                $errors = $file->getErrorString();
+                return 'Error: ' . $errors;
             }
         }
-        
         // make a zip file
         $zip = new \ZipArchive();
         $zipFileName = 'generated_' . uniqid() . '.zip';
@@ -174,14 +183,16 @@ class Home extends BaseController
             $dateTime = new \DateTime();
             $filename = $this->upload_files();
             $messageData = [
-                'Message' => $encryption->encrypt($this->request->getPost('message')),
+                'Message' => bin2hex($this->encrypter->encrypt($this->request->getPost('message'))),
                 'Expire' => $expiration,
                 'CreatedAt' => $dateTime->format('Y-m-d H:i:s'),
-                'File' => $filename,
+                'File' => bin2hex($this->encrypter->encrypt($filename)),
             ];
             if ($this->logModel->save($messageData))
             {
-                return $this->response->setJSON(['response' => 'success']);
+                $insertedPrimaryKeyValue = $this->logModel->getInsertID();
+                $link = $this->makeURL($insertedPrimaryKeyValue);
+                return $this->response->setJSON(['link' => $link]);
             }
             else
             {
