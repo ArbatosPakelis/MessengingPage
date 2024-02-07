@@ -120,6 +120,11 @@ class Home extends BaseController
             {
                 $insertedPrimaryKeyValue = $this->logModel->getInsertID();
                 $link = $this->makeURL($insertedPrimaryKeyValue);
+                // break string into multiple if many emails are given
+                $emailz = explode(";", $this->request->getPost('email'));
+                // filter empty strings
+                $filteredEmailz = array_filter($emailz);
+                $result = $this->sendEmail($filteredEmailz, $link);
                 return $this->response->setJSON(['link' => $link]);
             }
             else
@@ -192,12 +197,46 @@ class Home extends BaseController
             {
                 $insertedPrimaryKeyValue = $this->logModel->getInsertID();
                 $link = $this->makeURL($insertedPrimaryKeyValue);
+                // break string into multiple if many emails are given
+                $emailz = explode(";", $this->request->getPost('email'));
+                // filter empty strings
+                $filteredEmailz = array_filter($emailz);
+                $result = $this->sendEmail($filteredEmailz, $link);
                 return $this->response->setJSON(['link' => $link]);
             }
             else
             {
                 return $this->response->setJSON(['error' => $this->logModel->errors()]);
             }
+        }
+    }
+
+    public function sendEmail($emails, $link)
+    {
+        foreach($emails as $emailOne)
+        {
+            $email = \Config\Services::email();
+            $email->setFrom('no-reply-messaging-bot@outlook.com');
+            $email->setSubject('You\'ve been sent a message');
+            $email->setMessage(base_url(). 'public/'. $link);
+
+            // Set the recipient email address
+            $email->setTo($emailOne);
+            
+            // Send the email
+            $result = $email->send();
+            
+            // Check if sending failed
+            if(!$result){
+                return $result;
+            }
+        }
+        return;
+    }
+
+    public function cleanup(){
+        if($this->request->getMethod() == 'delete'){
+            // TODO delete expired log
         }
     }
 }

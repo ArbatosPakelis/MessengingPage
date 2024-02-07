@@ -42,6 +42,12 @@
                         <div style="color: #dee4ea;">
                             <h1>Expired</h1>
                         </div>
+                        <script>
+                            // Redirect to base_url() . '/cleanup' when the page loads
+                            window.onload = function() {
+                                window.location.href = "<?php echo base_url(); ?>/cleanup";
+                            };
+                        </script>
                     <?php  endif; ?>
                 <?php  else : ?>
                     <div style="color: #dee4ea;">
