@@ -41,8 +41,8 @@
                         <select class="form-select elementBack" aria-label="Default select example" id="expire" name="expire">
                             <option value="1">2min</option>
                             <option value="2">15min</option>
-                            <option value="2">1h</option>
-                            <option value="3">1d</option>
+                            <option value="3">1h</option>
+                            <option value="4">1d</option>
                         </select>
                     </div>
                     <div class="form-row" id="email" name="email">

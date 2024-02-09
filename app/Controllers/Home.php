@@ -40,13 +40,19 @@ class Home extends BaseController
             $decryptedId = $this->encrypter->decrypt(hex2bin($decodedData));
 
             // Find the log with the decrypted ID
-            $log = $this->logModel->where('id', $decryptedId)->find();
+            $log = $this->logModel->where('Id', $decryptedId)->find();
 
-            if ($log) {
+            // delete log if it's expired
+            $check = $this->cleanup($log);
+
+            // get log again in case it was deleted
+            $logs = $this->logModel->where('Id', $decryptedId)->find();
+
+            if ($logs) {
                 // Decrypt the message
-                $hold = $this->encrypter->decrypt(hex2bin($log[0]['Message']));
-                $log[0]['Message'] = $hold;
-                return view('receive_message', ['data' => $log]);
+                $hold = $this->encrypter->decrypt(hex2bin($logs[0]['Message']));
+                $logs[0]['Message'] = $hold;
+                return view('receive_message', ['data' => $logs]);
             } else {
                 // Log with the decrypted ID not found
                 return view('receive_message', ['data' => null]);
@@ -57,20 +63,20 @@ class Home extends BaseController
         }
     }
 
-    public function downloadFile()
-    {
-        // Get the data parameter from the URL
-        $dataParam = $this->request->getGet('path');
-        $file = FCPATH . 'files/'. $this->encrypter->decrypt(hex2bin($dataParam));
+    // public function downloadFile()
+    // {
+    //     // Get the data parameter from the URL
+    //     $dataParam = $this->request->getGet('path');
+    //     $file = FCPATH . 'files/'. $this->encrypter->decrypt(hex2bin($dataParam));
 
-        // Check if the file exists
-        if (file_exists($file)) {
-            return $this->response->download($file, null);
-        } else {
-            // Handle the case where the file doesn't exist (e.g., show an error message)
-            return 'File not found';
-        }
-    }
+    //     // Check if the file exists
+    //     if (file_exists($file)) {
+    //         return $this->response->download($file, null);
+    //     } else {
+    //         // Handle the case where the file doesn't exist (e.g., show an error message)
+    //         return 'File not found';
+    //     }
+    // }
 
     public function processTime($value){
         // Get the current time
@@ -143,13 +149,14 @@ class Home extends BaseController
     public function upload_files(){
         $uploadedFiles = $this->request->getFiles();
         $uploadedFileNames = [];
+        $pass = $this->request->getPost('password');
 
         foreach ($uploadedFiles['customFiles'] as $file) {
             if ($file !== null && $file->isValid() && !$file->hasMoved()) {
                 $name = $file->getRandomName();
         
                 // Move the uploaded file to the desired directory
-                $file->move(getenv('baseURL') . ('files/'), $name);
+                $file->move(WRITEPATH . ('files/'), $name);
     
                 $uploadedFileNames[] = $name;
             } 
@@ -162,9 +169,13 @@ class Home extends BaseController
         // make a zip file
         $zip = new \ZipArchive();
         $zipFileName = 'generated_' . uniqid() . '.zip';
-        if ($zip->open('files/'.$zipFileName, \ZipArchive::CREATE) === TRUE) {
+        if ($zip->open(WRITEPATH . 'files/'.$zipFileName, \ZipArchive::CREATE) === TRUE) {
             foreach ($uploadedFileNames as $file) {
-                    $zip->addFile(getenv('baseURL') . ('files/'). $file, basename($file));
+                    $zip->addFile(WRITEPATH . ('files/'). $file, basename($file));
+                    $zip->setEncryptionName(basename($file), \ZipArchive::EM_AES_256);
+            }
+            if(isset($pass)){
+                $zip->setPassword($pass);
             }
             $zip->close();
         }
@@ -172,7 +183,7 @@ class Home extends BaseController
         // cleanup
         foreach($uploadedFileNames as $file)
         {
-            unlink(getenv('baseURL') . ('files/'). $file);
+            unlink(WRITEPATH . ('files/'). $file);
         }
         
         return $zipFileName;
@@ -187,11 +198,13 @@ class Home extends BaseController
             $expiration = $this->processTime($option);
             $dateTime = new \DateTime();
             $filename = $this->upload_files();
+
             $messageData = [
                 'Message' => bin2hex($this->encrypter->encrypt($this->request->getPost('message'))),
                 'Expire' => $expiration,
                 'CreatedAt' => $dateTime->format('Y-m-d H:i:s'),
                 'File' => bin2hex($this->encrypter->encrypt($filename)),
+                'Password'  => bin2hex($this->encrypter->encrypt($this->request->getPost('password'))),
             ];
             if ($this->logModel->save($messageData))
             {
@@ -213,30 +226,40 @@ class Home extends BaseController
 
     public function sendEmail($emails, $link)
     {
-        foreach($emails as $emailOne)
-        {
-            $email = \Config\Services::email();
-            $email->setFrom('no-reply-messaging-bot@outlook.com');
-            $email->setSubject('You\'ve been sent a message');
-            $email->setMessage(base_url(). 'public/'. $link);
+        if(isset($emails)){
+            foreach($emails as $emailOne)
+            {
+                $email = \Config\Services::email();
+                $email->setFrom('no-reply-messaging-bot@outlook.com');
+                $email->setSubject('You\'ve been sent a message');
+                $email->setMessage(base_url(). 'public/'. $link);
 
-            // Set the recipient email address
-            $email->setTo($emailOne);
-            
-            // Send the email
-            $result = $email->send();
-            
-            // Check if sending failed
-            if(!$result){
-                return $result;
+                // Set the recipient email address
+                $email->setTo($emailOne);
+                
+                // Send the email
+                $result = $email->send();
+                
+                // Check if sending failed
+                if(!$result){
+                    return $result;
+                }
             }
         }
         return;
     }
 
-    public function cleanup(){
-        if($this->request->getMethod() == 'delete'){
-            // TODO delete expired log
+    public function cleanup($log){
+        $currentTime = time();
+        $expiration = strtotime($log[0]['Expire']);
+        if($expiration < $currentTime){
+
+            $rez = $this->logModel->delete($log[0]['Id']);
+            if($rez && $log[0]['File'] != null){
+                unlink(getenv('baseURL') . ('files/'). $this->encrypter->decrypt(hex2bin($log[0]['File'])));
+                return true;
+            }
         }
+        return false;
     }
 }

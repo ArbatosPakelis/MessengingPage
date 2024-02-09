@@ -30,7 +30,7 @@
                             </div>
                             <?php if(isset($data[0]['File'])) :?>
                                 <div class="elementBack" style="margin-top:20px;padding-top:0px;border-radius:5px;width:33px;">
-                                    <a href="<?= base_url().'public/download?path='.$data[0]['File']; ?>" class="btn btn-sm"><span class="glyphicon glyphicon-download-alt"></a>
+                                    <a href="<?= base_url() . 'public/download/' . $data[0]['File'] ?>" class="btn btn-sm"><span class="glyphicon glyphicon-download-alt"></a>
                                 </div>
                             <?php endif; ?>
                             <div class="form-row elementBack" style="margin-top:30px;padding:5px;width:100px;border-radius:5px; text-align: center;">
