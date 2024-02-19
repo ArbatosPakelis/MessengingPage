@@ -1,14 +1,18 @@
 <?php
 namespace App\Controllers;
 use App\Models\LogModel;
+use App\Models\EmailQueueModel;
 
 class Home extends BaseController
 {
     private $logModel;
+    private $emailQueueModel;
+
     private $encrypter;
     public function __construct()
     {
         $this->logModel = new LogModel();
+        $this->emailQueueModel = new EmailQueueModel();
         $this->encrypter = \Config\Services::encrypter();
         date_default_timezone_set('Etc/GMT-2');
     }
@@ -198,13 +202,14 @@ class Home extends BaseController
             $expiration = $this->processTime($option);
             $dateTime = new \DateTime();
             $filename = $this->upload_files();
+            $pass = bin2hex($this->encrypter->encrypt($this->request->getPost('password')));
 
             $messageData = [
                 'Message' => bin2hex($this->encrypter->encrypt($this->request->getPost('message'))),
                 'Expire' => $expiration,
                 'CreatedAt' => $dateTime->format('Y-m-d H:i:s'),
                 'File' => bin2hex($this->encrypter->encrypt($filename)),
-                'Password'  => bin2hex($this->encrypter->encrypt($this->request->getPost('password'))),
+                'Password'  => $pass,
             ];
             if ($this->logModel->save($messageData))
             {
@@ -214,7 +219,7 @@ class Home extends BaseController
                 $emailz = explode(";", $this->request->getPost('email'));
                 // filter empty strings
                 $filteredEmailz = array_filter($emailz);
-                $result = $this->sendEmail($filteredEmailz, $link);
+                $result = $this->sendFileEmail($filteredEmailz, $link, $pass);
                 return $this->response->setJSON(['link' => $link]);
             }
             else
@@ -249,6 +254,42 @@ class Home extends BaseController
         return;
     }
 
+    public function sendFileEmail($emails, $link, $pass)
+    {
+        if(isset($emails)){
+            foreach($emails as $emailOne)
+            {
+                $email = \Config\Services::email();
+                $email->setFrom('no-reply-messaging-bot@outlook.com');
+                $email->setSubject('You\'ve been sent a message');
+                $email->setMessage(base_url(). 'public/'. $link);
+
+                // Set the recipient email address
+                $email->setTo($emailOne);
+                
+                // Send the email
+                $result = $email->send();
+                
+                // Check if sending failed
+                if(!$result){
+                    return $result;
+                }
+
+                $emailQueueData = [
+                    'Email' => $emailOne,
+                    'Password'  => $pass,
+                ];
+
+                $result = $this->emailQueueModel->save($emailQueueData);
+                if (!$result)
+                {
+                    return $this->response->setJSON(['error' => $this->logModel->errors()]);
+                }
+            }
+        }
+        return;
+    }
+
     public function cleanup($log){
         $currentTime = time();
         $expiration = strtotime($log[0]['Expire']);
@@ -261,5 +302,42 @@ class Home extends BaseController
             }
         }
         return false;
+    }
+
+    public function processEmails(){
+        $emails = $this->emailQueueModel->findAll();
+        
+        foreach($emails as $emailOne){
+            $email = \Config\Services::email();
+            $email->setFrom('no-reply-messaging-bot@outlook.com');
+            $email->setSubject('You\'ve been sent a message');
+            try {
+                $password = $emailOne['Password'];
+                if ($password !== null) {
+                    $decryptedPassword = $this->encrypter->decrypt(hex2bin($password));
+                    $email->setMessage('Password: ' . $decryptedPassword);
+                    $this->emailQueueModel->delete($emailOne['Id']);
+                } else {
+                    $email->setMessage('No password provided');
+                }
+            } catch (\CodeIgniter\Security\Exceptions\SecurityException $e) {
+                // Handle decryption failure
+                $email->setMessage('Failed to retrieve the password: ' . $e->getMessage());
+            } catch (\RuntimeException $e) {
+                // Handle other runtime exceptions
+                $email->setMessage('Runtime error during decryption: ' . $e->getMessage());
+            }
+
+            // Set the recipient email address
+            $email->setTo($emailOne['Email']);
+            
+            // Send the email
+            $result = $email->send();
+            if(!$result)
+            {
+                return $result;
+            }
+        }
+        return;
     }
 }

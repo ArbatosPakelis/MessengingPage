@@ -14,6 +14,7 @@
         "ext-intl": "*",
         "ext-json": "*",
         "ext-mbstring": "*",
+        "daycry/cronjob": "^2.2",
         "laminas/laminas-escaper": "^2.9",
         "psr/log": "^1.1"
     },
@@ -25,7 +26,8 @@
         "mikey179/vfsstream": "^1.6",
         "nexusphp/cs-config": "^3.6",
         "phpunit/phpunit": "^9.1",
-        "predis/predis": "^1.1 || ^2.0"
+        "predis/predis": "^1.1 || ^2.0",
+        "rector/rector": "*"
     },
     "suggest": {
         "ext-curl": "If you use CURLRequest class",
