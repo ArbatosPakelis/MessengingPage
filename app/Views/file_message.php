@@ -84,6 +84,15 @@
 
             $('#submitButton').click(function (e) {
                 e.preventDefault(); // Prevent the default form submission
+
+                // Perform form validation
+                var fieldValue = $('#message').val().trim();
+                if (fieldValue === "") {
+                    // Display an error message or perform other actions for incomplete form
+                    alert("Please fill in all required fields.");
+                    return; // Exit the function to prevent further execution
+                }
+
                 // Create a FormData object from the form
                 var formData = new FormData($('#fileForm')[0]);
 

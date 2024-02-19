@@ -63,6 +63,15 @@
             $(document).ready(function () {
                 $('#submitButton').click(function (e) {
                     e.preventDefault(); // Prevent the default form submission
+                    
+                    // Perform form validation
+                    var fieldValue = $('#message').val().trim();
+                    if (fieldValue === "") {
+                        // Display an error message or perform other actions for incomplete form
+                        alert("Please fill in all required fields.");
+                        return; // Exit the function to prevent further execution
+                    }
+
                     var formData = new FormData($('#msgForm')[0]);
                     $.ajax({
                         url: '<?php echo base_url('public/submitM')?>',
