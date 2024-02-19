@@ -15,56 +15,73 @@
     <div style="padding-top:0px;">
         <?= view('navigation_bar')?>
     </div>
-    <div class="container" style="">
-        <div class="row" style="margin-bottom:30px">
-            <div class="col-sm-2 col-2"></div>
-            <div class="col-sm-7 col-sm-6">
-                <form style="display:block" id="fileForm" enctype="multipart/form-data" method="POST">
-                    <div class="form-row">
-                        <h5>Message</h5>
-                        <textarea class="form-control elementBack" placeholder="type message here..." rows="5" style="height:100%" id="message" name="message"></textarea>
-                    </div>
-                    <div class="form-row">
-                        <h5>Password</h5>
-                        <input class="form-control elementBack" placeholder="type password for zip here..." type="password" id="password" name="password">
-                    </div>
-                    <div>
-                        <div class="custom-file col-sm-6 col-md-6" style="color:#181818;height: 100%;" id="dropZone">
-                            <input type="file" class="custom-file-input" id="customFiles" name="customFiles[]" multiple="multiple" onchange="displayFileNames(this.files)">
-                        </div>
-                        <div>
-                            <div class="ml-3 col-sm-6 col-md-6 text-truncate" id="fileInfo" name="fileInfo" style="background-color: #282e33; color: #dee4ea;overflow-wrap: break-word;padding-top:0px;min-height:100px"></div>
-                        </div>
-                    </div>
-                    <div style="padding-top:50px">
-                        <h5>Expire</h5>
-                        <select class="form-select elementBack" aria-label="Default select example" id="expire" name="expire">
-                            <option value="1">2min</option>
-                            <option value="2">15min</option>
-                            <option value="3">1h</option>
-                            <option value="4">1d</option>
-                        </select>
-                    </div>
-                    <div class="form-row" id="email" name="email">
-                        <h5>Email</h5>
-                        <textarea class="form-control elementBack" placeholder="type emails here separate them with ;" rows="2" style="height:100%" id="email" name="email"></textarea>
-                    </div>
-                    <div class="form-row" style="padding-top:30px">
-                        <div class="col-sm-6" style="padding-left:0px">
-                            <button class="btn elementBack" id="submitButton">
-                                Submit
-                            </button>
-                        </div>
-                        <div class="col-sm-6" style="padding-right:0px">
-                            <input class="form-control elementBack"  id="resp" style="float:right" type="text" placeholder="Link will show here…" readonly>
-                        </div>
-                    </div>
-                </form>
+    <div class="center">
+        <form style="display:block" id="fileForm" enctype="multipart/form-data" method="POST">
+            <h2>File Form</h2>
+            <hr>
+            <div class="form-row">
+                <label  for="message">Message*</label>
+                <textarea class="form-control elementBack" placeholder="type message here..." rows="5" style="height:100%" id="message" name="message"></textarea>
             </div>
-        </div>
+            <div class="form-row hover-text">
+                <label for="password">Password</label>
+                <input class="form-control elementBack" placeholder="type password for zip here..." type="password" id="password" name="password">
+                <span class="tooltip-text" id="bottom">You may create a password for added security, but it's not required.</span>
+            </div>
+            <div class="hover-text">
+                <div class="custom-file col-sm-4 col-md-4" style="color:#181818;height: 100%;" id="dropZone">
+                    <label for="customFiles" class="custom-file-label">
+                        <span class="glyphicon glyphicon-open"></span>
+                    </label>
+                    <input type="file" class="custom-file-input" id="customFiles" name="customFiles[]" multiple="multiple" onchange="displayFileNames(this.files)">
+                </div>
+                <div>
+                    <div class="ml-3 col-sm-8 col-md-8 text-truncate" id="fileInfo" name="fileInfo" style="background-color: #282e33; color: #dee4ea;overflow-wrap: break-word;padding-top:0px;min-height:100px"></div>
+                </div>
+                <span class="tooltip-text" id="bottom">Clicking file upload button will add a single file to the message. Alternatively, you can drag and drop files onto the button to add multiple files at once.</span>
+            </div>
+            <div class="hover-text" style="padding-top:50px">
+                <label for="expire">Expire in*</label>
+                <select class="form-select elementBack" aria-label="Default select example" id="expire" name="expire">
+                    <option value="1">2min</option>
+                    <option value="2">15min</option>
+                    <option value="3">1h</option>
+                    <option value="4">1d</option>
+                </select>
+                <span class="tooltip-text" id="bottom">Choose a time window during which your message will be accessible.</span>
+            </div>
+            <div class="form-row hover-text" id="email" name="email">
+                <label for="email">Email</label>
+                <textarea class="form-control elementBack" placeholder="Please enter your email address/es, separated by semicolons." rows="3" style="height:100%" id="email" name="email"></textarea>
+                <span class="tooltip-text" id="bottom">Add one or multiple email addresses, and the generated link will be automatically sent to the provided emails.</span>
+            </div>
+            <div style="display:block">
+                <hr>
+                <div style="padding-top:0px;">
+                    <button class="btn elementBack" id="submitButton" style="width:100%;">
+                        Submit
+                    </button>
+                </div>
+                <hr>
+                <div style="padding-top:0px;flex-direction: row;justify-content: center;">
+                    <input class="form-control elementBack" id="resp" type="text" placeholder="Link will show here…" readonly>
+                </div>
+            </div>
+        </form>
     </div>
     <script>
         $(document).ready(function () {
+            // Get the input element
+            var inputField = document.getElementById("resp");
+
+            // Add click event listener to the input field
+            inputField.addEventListener("click", function() {
+                // Select the text inside the input field if it exists
+                if (inputField.value) {
+                    inputField.select();
+                }
+            });
+
             $('#submitButton').click(function (e) {
                 e.preventDefault(); // Prevent the default form submission
                 // Create a FormData object from the form
