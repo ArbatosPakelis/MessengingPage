@@ -16,8 +16,8 @@ class App extends BaseConfig
      *
      *    http://example.com/
      */
-    // public string $baseURL = 'https://messaging-1c49fa656f99.herokuapp.com/';
-    public string $baseURL = 'http://localhost/MessengingPage/';
+    public string $baseURL = 'https://messaging-1c49fa656f99.herokuapp.com/';
+    // public string $baseURL = 'http://localhost/MessengingPage/';
     /**
      * Allowed Hostnames in the Site URL other than the hostname in the baseURL.
      * If you want to accept multiple Hostnames, set this.
