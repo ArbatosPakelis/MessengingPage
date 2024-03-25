@@ -1,5 +1,20 @@
+table {
+    background-color: #222 !important;
+    width: 90%;
+    margin-left:auto;
+    margin-right:auto;
+}
 
-.centerDiv{
+th, td {
+    border: solid 1px #3D3D3D;
+    padding: 20px!important;
+}
+
+tr:hover{
+    background-color: #32323b !important;
+}
+
+.centerDiv {
     display: inline-flexbox !important;
     margin-left: auto;
     margin-right: auto;
@@ -94,6 +109,10 @@ select{
     width: 70% !important;
 } */
 
+button:hover{
+    background-color: #32323b !important;
+}
+
 form{
     width: 400px !important;
     background-color: #212124 !important;
@@ -170,4 +189,27 @@ h2{
     .toggle-btn {
       display: none; /* Hide the button for screens larger than 768px */
     }
+}
+
+.move{
+    color: #dee4ea !important;
+    text-decoration: underline !important;
+}
+
+.move:hover {
+    color: #60c2e2 !important;
+}
+
+.spnErr{
+    display:block;
+    padding: 5px;
+    margin-top: 10px !important;
+    border-radius: 5px;
+    visibility: visible;
+    background-color: #131313;;
+    color: #dee4ea;
+}
+
+.spnHide{
+    display: none;
 }

@@ -4,13 +4,21 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="stylesheet" href="<?= base_url('public/css/styles.css') ?>">
+    <script src="https://code.jquery.com/jquery-3.6.4.min.js"></script>
     <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.4.1/css/bootstrap.min.css">
     <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.4.1/js/bootstrap.min.js"></script>
     <title>Home page</title>
 </head>
 <body>
     <div style="padding-top:0px;">
-        <?= view('navigation_bar')?>
+        <?php
+            $ses_data = [
+                'id' => $id,
+                'name' => $name,
+                'isLoggedIn' => $isLoggedIn
+            ];
+            echo view('navigation_bar', $ses_data)
+        ?>
     </div>
     <div class="centerDiv align-content-center" style="padding-top:100px; width:700px">
         <p class="centerText">
@@ -45,5 +53,10 @@
             the link will the sent out to those emails.
         </p>
     </div>
+    <script>
+        console.log(<?= json_encode($id) ?>);
+        console.log(<?= json_encode($name) ?>);
+        console.log(<?= json_encode($isLoggedIn) ?>);
+    </script>
 </body>
 </html>

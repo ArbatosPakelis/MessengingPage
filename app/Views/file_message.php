@@ -13,7 +13,14 @@
 </head>
 <body>
     <div style="padding-top:0px;">
-        <?= view('navigation_bar')?>
+        <?php
+            $ses_data = [
+                'id' => $id,
+                'name' => $name,
+                'isLoggedIn' => $isLoggedIn
+            ];
+            echo view('navigation_bar', $ses_data)
+        ?>
     </div>
     <div class="center">
         <form style="display:block" id="fileForm" enctype="multipart/form-data" method="POST">
