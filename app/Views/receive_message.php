@@ -11,11 +11,22 @@
 </head>
 <body>
 <div style="padding-top:0px;">
-        <?= view('navigation_bar')?>
+        <?php
+            $ses_data = [
+                'id' => $session['id'],
+                'name' => $session['name'],
+                'isLoggedIn' => $session['isLoggedIn']
+            ];
+            echo view('navigation_bar', $ses_data)
+        ?>
     </div>
     <div class="center">
+        <script>
+            console.log(<?=json_encode($data)?>);
+            console.log(<?=json_encode($session)?>);
+        </script>
         <?php  
-        if(isset($data)) : ?>
+        if(is_array($data) && isset($data)) : ?>
             <?php 
             $currentTime = time();
             $expiration = strtotime($data[0]['Expire']);
@@ -27,7 +38,7 @@
                         <label for="content">Message</label>
                         <textarea class="form-control elementBack"rows="5" style="height:100%" id="content" name="content"  readonly><?= $data[0]['Message'] ?></textarea>
                     </div>
-                    <?php if(isset($data[0]['File'])) :?>
+                    <?php if(isset($data[0]['File']) && $data[0]['File'] != null && $data[0]['File'] != "") :?>
                         <div class="elementBack" style="margin-top:20px;padding-top:0px;border-radius:5px;width:33px;">
                             <a href="<?= base_url() . 'public/download/' . $data[0]['File'] ?>" class="btn btn-sm"><span class="glyphicon glyphicon-download-alt"></a>
                         </div>
@@ -44,16 +55,22 @@
                 <script>
                     // Redirect to base_url() . '/cleanup' when the page loads
                     window.onload = function() {
-                        window.location.href = "<?php echo base_url(); ?>/cleanup";
+                        window.location.href = '<?php echo base_url('public/home')?>';
                     };
                 </script>
             <?php  endif; ?>
         <?php  else : ?>
+            <?php  if($data == "500"): ?>
+            <div style="color: #dee4ea;">
+                <h1>Message data got corrupted </h1>
+            </div>
+            <?php  else : ?>
             <div style="color: #dee4ea;">
                 <h1>Message has been deleted</h1>
             </div>
+            <?php  endif; ?>
         <?php  endif; ?>
-        <?php if(isset($data)) : ?>
+        <?php if(is_array($data) && isset($data)) : ?>
             <script>
                 const expireTime = new Date('<?= $data[0]['Expire'] ?>').getTime();
                 function startTimer(targetTime) {

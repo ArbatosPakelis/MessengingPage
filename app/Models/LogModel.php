@@ -6,6 +6,6 @@ class LogModel extends Model{
     protected $table = 'log';
     protected $primaryKey = 'Id';
 
-    protected $allowedFields = ['Message', 'Password', 'File', 'CreatedAt', 'Expire'];
+    protected $allowedFields = ['Message', 'Password', 'File', 'CreatedAt', 'Expire', 'Users_FK', 'Views'];
 }
 ?>

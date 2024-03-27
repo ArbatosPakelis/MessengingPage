@@ -2,6 +2,7 @@
 namespace App\Controllers;
 use App\Models\LogModel;
 use App\Models\EmailQueueModel;
+use App\Models\UserModel;
 
 class Home extends BaseController
 {
@@ -11,28 +12,67 @@ class Home extends BaseController
     private $encrypter;
     public function __construct()
     {
+        $this->session= \Config\Services::session();
+        $this->session->start();
         $this->logModel = new LogModel();
         $this->emailQueueModel = new EmailQueueModel();
+        $this->userModel = new UserModel();
         $this->encrypter = \Config\Services::encrypter();
         date_default_timezone_set('Etc/GMT-2');
     }
     public function index(): string
     {
-        return view('home');
+        $sessionData = [
+            'id' => session()->get('id'),
+            'name' => session()->get('name'),
+            'isLoggedIn' => session()->get('isLoggedIn')
+        ];
+        return view('home', $sessionData);
     }
 
     public function message()
     {
-        return view('message');
+        $sessionData = [
+            'id' => session()->get('id'),
+            'name' => session()->get('name'),
+            'isLoggedIn' => session()->get('isLoggedIn')
+        ];
+        return view('message', $sessionData);
     }
 
     public function fileMessage()
     {
-        return view('file_message');
+        $sessionData = [
+            'id' => session()->get('id'),
+            'name' => session()->get('name'),
+            'isLoggedIn' => session()->get('isLoggedIn')
+        ];
+        return view('file_message', $sessionData);
+    }
+
+    public function profile()
+    {
+        $sessionData = [
+            'id' => session()->get('id'),
+            'name' => session()->get('name'),
+            'isLoggedIn' => session()->get('isLoggedIn')
+        ];
+        $logs = $this->logModel->where('Users_FK', session()->get('id'))->find();
+        foreach ($logs as &$log) {
+            $encriptedId = urlencode(bin2hex($this->encrypter->encrypt($log['Id']))); // Assuming 'id' is the primary key of the log table
+            $log['encriptedId'] = $encriptedId;
+        }
+        return view('profile', ['session' =>$sessionData, 'data' =>$logs]);
     }
 
     public function receiveMessage()
     {
+        $sessionData = [
+            'id' => session()->get('id'),
+            'name' => session()->get('name'),
+            'isLoggedIn' => session()->get('isLoggedIn')
+        ];
+
         try {
             // Get the data parameter from the URL
             $dataParam = $this->request->getGet('data');
@@ -56,14 +96,14 @@ class Home extends BaseController
                 // Decrypt the message
                 $hold = $this->encrypter->decrypt(hex2bin($logs[0]['Message']));
                 $logs[0]['Message'] = $hold;
-                return view('receive_message', ['data' => $logs]);
+                return view('receive_message', ['data' => $logs, 'session' => $sessionData]);
             } else {
                 // Log with the decrypted ID not found
-                return view('receive_message', ['data' => null]);
+                return view('receive_message', ['data' => "404", 'session' => $sessionData]);
             }
         } catch (\Exception $e) {
             // Handle any exceptions or errors
-            return view('receive_message', ['data' => null]);
+            return view('receive_message', ['data' => "500", 'session' => $sessionData]);
         }
     }
 
@@ -120,11 +160,23 @@ class Home extends BaseController
             $expiration = $this->processTime($option);
             $dateTime = new \DateTime();
             
-            $messageData = [
-                'Message' => bin2hex($this->encrypter->encrypt($this->request->getPost('message'))),
-                'Expire' => $expiration,
-                'CreatedAt' => $dateTime->format('Y-m-d H:i:s'),
-            ];
+            if(session()->get('id') < 1)
+            {
+                $messageData = [
+                    'Message' => bin2hex($this->encrypter->encrypt($this->request->getPost('message'))),
+                    'Expire' => $expiration,
+                    'CreatedAt' => $dateTime->format('Y-m-d H:i:s'),
+                ];
+            }
+            else
+            {
+                $messageData = [
+                    'Message' => bin2hex($this->encrypter->encrypt($this->request->getPost('message'))),
+                    'Expire' => $expiration,
+                    'CreatedAt' => $dateTime->format('Y-m-d H:i:s'),
+                    'Users_FK' => session()->get('id'),
+                ];
+            }
 
             if ($this->logModel->save($messageData))
             {
@@ -163,34 +215,39 @@ class Home extends BaseController
                 $file->move(WRITEPATH . ('files/'), $name);
     
                 $uploadedFileNames[] = $name;
-            } 
-            else 
-            {
-                $errors = $file->getErrorString();
-                return 'Error: ' . $errors;
             }
         }
         // make a zip file
         $zip = new \ZipArchive();
         $zipFileName = 'generated_' . uniqid() . '.zip';
-        if ($zip->open(WRITEPATH . 'files/'.$zipFileName, \ZipArchive::CREATE) === TRUE) {
-            foreach ($uploadedFileNames as $file) {
-                    $zip->addFile(WRITEPATH . ('files/'). $file, basename($file));
-                    $zip->setEncryptionName(basename($file), \ZipArchive::EM_AES_256);
-            }
-            if(isset($pass)){
+        //return  trim($uploadedFiles['customFiles'][0]) !== '';
+        if(trim($uploadedFiles['customFiles'][0]) !== '')
+        {
+            $holding = $zip->open(WRITEPATH . 'files/'.$zipFileName, \ZipArchive::CREATE);
+            if($this->request->getPost('password') !== null && $this->request->getPost('password') !== ""){
                 $zip->setPassword($pass);
             }
+            if ($holding === true) {
+                foreach ($uploadedFileNames as $file) {
+                        $zip->addFile(WRITEPATH . ('files/'). $file, basename($file));
+                        if($this->request->getPost('password') !== null && $this->request->getPost('password') !== ""){
+                            $zip->setEncryptionName(basename($file), \ZipArchive::EM_AES_256);
+                        }
+                }
+            }
             $zip->close();
+            // cleanup
+            foreach($uploadedFileNames as $file)
+            {
+                unlink(WRITEPATH . ('files/'). $file);
+            }
+            
+            return bin2hex($this->encrypter->encrypt($zipFileName));
         }
-
-        // cleanup
-        foreach($uploadedFileNames as $file)
+        else
         {
-            unlink(WRITEPATH . ('files/'). $file);
+            return null;
         }
-        
-        return $zipFileName;
     }
 
     public function submitFiles(){
@@ -202,15 +259,38 @@ class Home extends BaseController
             $expiration = $this->processTime($option);
             $dateTime = new \DateTime();
             $filename = $this->upload_files();
-            $pass = bin2hex($this->encrypter->encrypt($this->request->getPost('password')));
+            //return $this->response->setJSON(['status' => $filename]);
+            if($this->request->getPost('password') !== null && $this->request->getPost('password') !== "")
+            {
+                $pass = bin2hex($this->encrypter->encrypt($this->request->getPost('password')));
+            }
+            else
+            {
+                $pass = null;
+            }
 
-            $messageData = [
-                'Message' => bin2hex($this->encrypter->encrypt($this->request->getPost('message'))),
-                'Expire' => $expiration,
-                'CreatedAt' => $dateTime->format('Y-m-d H:i:s'),
-                'File' => bin2hex($this->encrypter->encrypt($filename)),
-                'Password'  => $pass,
-            ];
+            if(session()->get('id') < 1)
+            {
+                $messageData = [
+                    'Message' => bin2hex($this->encrypter->encrypt($this->request->getPost('message'))),
+                    'Expire' => $expiration,
+                    'CreatedAt' => $dateTime->format('Y-m-d H:i:s'),
+                    'File' => $filename,
+                    'Password'  => $pass,
+                ];
+            }
+            else
+            {
+                $messageData = [
+                    'Message' => bin2hex($this->encrypter->encrypt($this->request->getPost('message'))),
+                    'Expire' => $expiration,
+                    'CreatedAt' => $dateTime->format('Y-m-d H:i:s'),
+                    'File' => $filename,
+                    'Password'  => $pass,
+                    'Users_FK' => session()->get('id'),
+                ];
+            }
+
             if ($this->logModel->save($messageData))
             {
                 $insertedPrimaryKeyValue = $this->logModel->getInsertID();
@@ -295,11 +375,14 @@ class Home extends BaseController
         $expiration = strtotime($log[0]['Expire']);
         if($expiration < $currentTime){
 
-            $rez = $this->logModel->delete($log[0]['Id']);
-            if($rez && $log[0]['File'] != null){
+            $logg = $this->logModel->find($log[0]['Id']);
+            $holding = intval($logg['Views'])+1;
+            $this->logModel->where('Id', $log[0]['Id'])->set('Views', $holding)->update();
+            if($log[0]['File'] != null && $log[0]['File'] != ''){
                 unlink(getenv('baseURL') . ('files/'). $this->encrypter->decrypt(hex2bin($log[0]['File'])));
                 return true;
             }
+            return true;
         }
         return false;
     }
@@ -339,5 +422,109 @@ class Home extends BaseController
             }
         }
         return;
+    }
+
+    public function login()
+    {
+        if($this->request->getMethod() == 'get')
+        {
+            return view('login');
+        }
+        else if($this->request->getMethod() == 'post')
+        {
+            $userData = [
+                'Username' => $this->request->getPost('username'),
+                'Password' => $this->request->getPost('password'),
+            ];
+            $login = $this->authenticate($userData);
+            return $this->response->setJSON(['status' =>'sucess']);
+        }
+    }
+
+    public function signup()
+    {
+        if($this->request->getMethod() == 'get')
+        {
+            return view('signup');
+        }
+        else if($this->request->getMethod() == 'post')
+        {
+            $username = $this->request->getPost('username');
+            $password = $this->request->getPost('password');
+            $email = $this->request->getPost('email');
+
+            $existingUser = $this->userModel->where('Username', $username)->first();
+            if ($existingUser) {
+                return $this->response->setStatusCode(403)->setJSON(['error' => ' username is already taken']);
+            }
+            
+            $userData = [
+                'Username' => $username,
+                'Password' => bin2hex($this->encrypter->encrypt($password)),
+                'Email' => $email,
+            ];
+
+            if ($this->userModel->save($userData))
+            {
+                return $this->response->setJSON(['success' => 'User registered successfully']);
+            }
+            else
+            {
+                return $this->response->setStatusCode(500)->setJSON(['error' => $this->userModel->errors()]);
+            }
+        }
+    }
+
+    function authorize()
+    {
+        if (!session()->get('isLoggedIn') || session()->get('id') < 1 || session()->get('name') == "")
+        {
+            return false;
+        }
+        else
+        {
+            return true;
+        }
+    }
+
+    function authenticate($data)
+    {
+        if(isset($data))
+        {
+            $username = $data['Username'];
+            $password = $data['Password'];
+
+            $existingUser = $this->userModel->where('Username', $username)->first();
+            if (!$existingUser) {
+                return false;
+            }
+
+            $savedPassword = $this->encrypter->decrypt(hex2bin($existingUser['Password']));
+            
+            if($savedPassword == $password)
+            {
+                $ses_data = [
+                    'id' => $existingUser['Id'],
+                    'name' => $existingUser['Username'],
+                    'isLoggedIn' => True
+                ];   
+                $this->session->set($ses_data);
+                return true;
+            }
+        }
+        else
+        {
+            return false;
+        }
+    }
+
+    function logout()
+    {
+        $ses_data = [
+            'id' => -1,
+            'name' => '',
+            'isLoggedIn' => false
+        ];
+        $this->session->set($ses_data);
     }
 }
